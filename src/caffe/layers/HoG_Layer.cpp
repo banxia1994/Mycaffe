@@ -119,6 +119,7 @@ switch (this->layer_param_.hog_param().hog()){
  	top_data[(i*cell[0].size())+j] = cell[0][j];
     }
   }
+  break;
  case HoGParameter_HoGMethod_POW:
    tempBlock = pow(2,block_size_-1);
   for (int i = 0; i < M_;i++){
@@ -144,6 +145,9 @@ switch (this->layer_param_.hog_param().hog()){
  	top_data[(i*cell[0].size())+j] = cell[0][j];
     }
   }
+  break;
+  default:
+   LOG(FATAL) << "Unknown pooling method.";
  }
 }
 
@@ -159,7 +163,7 @@ void HoGLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     caffe_set(count,Dtype(0),bottom_diff);
     for (int i = 0; i< M_; i++){
       for (int k = 0; k < K_; k++){
-        const int index = index_data[i*K_+k];
+         int index = index_data[i*K_+k];
         bottom_diff[i*N_*K_+index*K_+k] += top_diff[i*K_+k];
       }
     }
@@ -175,5 +179,4 @@ STUB_GPU(HoGLayer);
 INSTANTIATE_CLASS(HoGLayer);
 REGISTER_LAYER_CLASS(HoG);
 
-}  // namespace caffe
-
+} // namespace caffe

@@ -10,7 +10,6 @@ template <typename Dtype>
 void HoGLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   N_ = bottom[0]->channels();
-  transpose_ = this->layer_param_.hog_param().transpose();
   block_size_ = this->layer_param_.hog_param().block_size();
   const int axis = bottom[0]->CanonicalAxisIndex(
       this->layer_param_.hog_param().axis());
@@ -26,6 +25,7 @@ void HoGLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   // Figure out the dimensions
   const int axis = bottom[0]->CanonicalAxisIndex(
       this->layer_param_.hog_param().axis());
+  tempsize_ = 0;
   const int new_K = bottom[0]->count(axis+1);
   CHECK_EQ(K_, new_K)
       << "Input size incompatible with inner product parameters.";
@@ -42,8 +42,11 @@ void HoGLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
      top[0]->Reshape(top_shape);
 	 break;
    case HoGParameter_HoGMethod_POW:
+     for (int i = 0; i < block_size_;i++){ //add
+       tempsize_ += pow(2,i)*pow(2,i);
+     }
      top_shape.resize(axis + 1);
-     top_shape[axis] = N_*pow(2,block_size_-1)*pow(2,block_size_-1);
+     top_shape[axis] = N_*tempsize_; //add
      top[0]->Reshape(top_shape);
 	 break;   
    default:
@@ -96,11 +99,6 @@ switch (this->layer_param_.hog_param().hog()){
  case HoGParameter_HoGMethod_STEP:
     tempBlock = block_size_;
   for (int i = 0; i < M_;i++){
-       //vector<int> cell1(48);
-       //vector<int> cell2(48);
-       //vector<int> cell3(48);
-       //vector<int> cell4(48);
-	   //vector<vector<int> > cell(ceil(float(H)/tempBlock)*ceil(float(W)*tempBlock),vector<int>(N_,0)); // when tempBlock represent blocksize
       vector<vector<int> > cell(tempBlock*tempBlock,vector<int>(N_,0));
 	  for (int h = 0; h < H; h++){
            for(int w = 0; w < W; w++){
@@ -112,22 +110,17 @@ switch (this->layer_param_.hog_param().hog()){
 	   for (int s = 1; s < cell.size(); s++){
          cell[0].insert(cell[0].end(),cell[s].begin(),cell[s].end());
 	   }
-        // cell1.insert(cell1.end(),cell2.begin(),cell2.end());
-         //cell1.insert(cell1.end(),cell3.begin(),cell3.end());
-        // cell1.insert(cell1.end(),cell4.begin(),cell4.end());
     for (int j = 0; j < cell[0].size(); j++){
  	top_data[(i*cell[0].size())+j] = cell[0][j];
     }
   }
   break;
  case HoGParameter_HoGMethod_POW:
-   tempBlock = pow(2,block_size_-1);
   for (int i = 0; i < M_;i++){
-       //vector<int> cell1(48);
-       //vector<int> cell2(48);
-       //vector<int> cell3(48);
-       //vector<int> cell4(48);
-	   vector<vector<int> > cell(tempBlock*tempBlock,vector<int>(N_,0));
+    int record = 0;
+    for(int b = 0; b <= block_size_; b++){  //add
+      tempBlock = pow(2,b);
+       vector<vector<int> > cell(tempBlock*tempBlock,vector<int>(N_,0));
        for (int h = 0; h < H; h++){
            for(int w = 0; w < W; w++){
 			 Dtype v_index = index_data[i*K_+h*W+w];
@@ -138,12 +131,11 @@ switch (this->layer_param_.hog_param().hog()){
 	   for (int s = 1; s < cell.size(); s++){
          cell[0].insert(cell[0].end(),cell[s].begin(),cell[s].end());
 	   }
-        // cell1.insert(cell1.end(),cell2.begin(),cell2.end());
-         //cell1.insert(cell1.end(),cell3.begin(),cell3.end());
-        // cell1.insert(cell1.end(),cell4.begin(),cell4.end());
-    for (int j = 0; j < cell[0].size(); j++){
- 	top_data[(i*cell[0].size())+j] = cell[0][j];
-    }
+       for (int j = 0; j < cell[0].size(); j++){
+ 	 top_data[i*tempsize_*N_+record*N_+j] = cell[0][j];
+       }
+       record += tempBlock*tempBlock;  
+   }
   }
   break;
   default:

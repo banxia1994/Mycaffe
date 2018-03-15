@@ -66,19 +66,6 @@ void HoGLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,const vecto
     switch (this->layer_param_.hog_param().hog()){
         case HoGParameter_HoGMethod_STEP:
          tempBlock = block_size_;
-         
-         //STEPTopForward<Dtype><<<CAFFE_GET_BLOCKS(count),CAFFE_CUDA_NUM_THREADS>>>(count,M_,K_,H,W,tempBlock,top_data);
-         break;
-      
-          case HoGParameter_HoGMethod_POW:
-           tempBlock = pow(2,block_size_-1);
-   
-           //POWTopForward<Dtype><<<CAFFE_GET_BLOCKS(count),CAFFE_CUDA_NUM_THREADS>>>(count,M_,K_,H,W,tempBlock,top_data);
-           break;
-          default:
-            LOG(FATAL) << "Unknow HoG method.";
-         }
-         //TopForward<Dtype><<<CAFFE_GET_BLOCKS(count),CAFFE_CUDA_NUM_THREADS>>>(count,N_,K_,H,W,top[2]->gpu_data(),tempBlock,top_data);
           for (int i = 0; i < M_;i++){
 	   vector<vector<int> > cell(tempBlock*tempBlock,vector<int>(N_,0));
            for (int h = 0; h < H; h++){
@@ -94,8 +81,37 @@ void HoGLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,const vecto
            for (int j = 0; j < cell[0].size(); j++){
  	     top_data[(i*cell[0].size())+j] = cell[0][j];
           }
-        }
-    
+        }       
+         //STEPTopForward<Dtype><<<CAFFE_GET_BLOCKS(count),CAFFE_CUDA_NUM_THREADS>>>(count,M_,K_,H,W,tempBlock,top_data);
+         break;
+      
+          case HoGParameter_HoGMethod_POW:
+           for (int i = 0; i < M_;i++){
+             int record = 0;
+             for(int b = 0; b <= block_size_; b++){  //add
+               tempBlock = pow(2,b);
+               vector<vector<int> > cell(tempBlock*tempBlock,vector<int>(N_,0));
+               for (int h = 0; h < H; h++){
+                 for(int w = 0; w < W; w++){
+			 Dtype v_index = indexMatrix_.cpu_data()[i*K_+h*W+w];
+			 cell[(h/static_cast<int>(std::ceil((float)H/tempBlock)))*(tempBlock)+w/static_cast<int>(std::ceil((float)W/tempBlock))][v_index] += 1;
+                 }
+         
+               }
+	       for (int s = 1; s < cell.size(); s++){
+                 cell[0].insert(cell[0].end(),cell[s].begin(),cell[s].end());
+	       }
+               for (int j = 0; j < cell[0].size(); j++){
+ 	         top_data[i*tempsize_*N_+record*N_+j] = cell[0][j];
+               }
+               record += tempBlock*tempBlock;  
+           }
+         }
+           break;
+          default:
+            LOG(FATAL) << "Unknow HoG method.";
+         }
+         //TopForward<Dtype><<<CAFFE_GET_BLOCKS(count),CAFFE_CUDA_NUM_THREADS>>>(count,N_,K_,H,W,top[2]->gpu_data(),tempBlock,top_data);
 
 }
 
@@ -109,6 +125,7 @@ __global__ void Backward(const int nthreads,const int N,const int K,const Dtype*
     }
 }
 
+
 template <typename Dtype>
 void HoGLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,const vector<bool>& propagate_down,
       const vector<Blob<Dtype>*>& bottom) {
@@ -120,13 +137,9 @@ void HoGLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,const vector<
     caffe_gpu_set(count,Dtype(0),bottom_diff);
     
     int nthreads = M_;
+    
     Backward<Dtype><<<CAFFE_GET_BLOCKS(count),CAFFE_CUDA_NUM_THREADS>>>(nthreads,N_,K_,top_diff,index_data,bottom_diff);
-    /*for (int i = 0; i< M_; i++){
-      for (int k = 0; k < K_; k++){
-         int index = index_data[i*K_+k];
-        bottom_diff[i*N_*K_+index*K_+k] += top_diff[i*K_+k];
-      }
-    }*/
+
   }
 }   
 

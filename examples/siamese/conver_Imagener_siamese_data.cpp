@@ -118,11 +118,14 @@ int main(int argc, char** argv) {
   
   std::string c1,c2,s1,s2;
   //load image data
-  for (int line_id = 0; line_id < lines.size(); ++line_id) {
+  for (int line_id = 0; line_id < (lines.size()*4); ++line_id) {
 	//read image pairs
-	pair_file >> c1 >> c2 >> s1 >> s2;
+	pair_file >> c1 >> c2;
+        LOG(INFO) << pair_file;
+LOG(INFO) << c1 << "+"<< c2<<"+" << s1 <<"+" << s2;
 	int line_id1 = atoi(c1.c_str());
 	int line_id2 = atoi(c2.c_str()); 
+    LOG(INFO) << line_id1 << "+"<< line_id2;
     //load data
     bool status;
     std::string enc = encode_type;

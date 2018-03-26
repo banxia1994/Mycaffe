@@ -3,7 +3,6 @@ add
 HoG layer: combine deeplearning with HoG
 
 
-
 MyLoss:  add gallery to training data
 
 

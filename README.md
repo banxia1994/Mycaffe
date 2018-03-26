@@ -32,12 +32,10 @@ layer {
 
 center_cos_loss: center-loss using cos method
 
-
-
 cos_loss
+
   optional CenterCosLossParameter center_cos_loss_param = 150;
-  optional CosLossParameter Cos_loss_param = 151;
-  
+  optional CosLossParameter Cos_loss_param = 151
   
   message CenterCosLossParameter {
   optional uint32 num_output = 1; // The number of outputs for the layer
@@ -47,6 +45,7 @@ cos_loss
   // May be negative to index from the end (e.g., -1 for the last axis).
   optional int32 axis = 3 [default = 1];
 }
+
 message CosLossParameter {
   optional uint32 num_output = 1; // The number of outputs for the layer
   optional FillerParameter Cos_filler = 2; // The filler for the centers

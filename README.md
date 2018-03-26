@@ -5,14 +5,17 @@ HoG layer: combine deeplearning with HoG
 
 MyLoss:  add gallery to training data
 
-
 multicrop layer:  crop feature map for global and local learing
 MultiCropParameter multi_crop_param
 message MultiCropParameter {
   optional uint32 patch_size = 1; // The kernel size
+  
   optional uint32 stride = 2; // The stride; defaults to 1
+  
   optional uint32 num_crop = 3; // The number of outputs for the layer
+  
 }
+
 layer {
   name: "multicrop"
   type: "MultiCrop"

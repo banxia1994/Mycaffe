@@ -11,36 +11,37 @@
     void MyLossLayer<Dtype>::LayerSetUp(  
         const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {  
       LossLayer<Dtype>::LayerSetUp(bottom, top);  
+      temp = 1.5;
+      label_limit = 10572;
     }  
       
     template <typename Dtype>  
     void MyLossLayer<Dtype>::Reshape(  
         const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {  
       LossLayer<Dtype>::Reshape(bottom, top);  
-      this->label_num=bottom[0]->channels();   //æ ‡ç­¾æ•° ï¼Œæ¯”å¦‚mnistä¸º10  
-      this->batch_size=bottom[0]->num();       //batchå¤§å°ï¼Œæ¯”å¦‚mnist ä¸€æ¬¡è¾“å…¥64ä¸ª  
-      this->prob_=vector<vector<Dtype> >(batch_size,vector<Dtype>(label_num,Dtype(0)));  //ç½®ä¿¡åº¦æ•°ç»„ 64*10  
+      this->label_num=bottom[0]->channels();   //±êÇ©Êı £¬±ÈÈçmnistÎª10  
+      this->batch_size=bottom[0]->num();       //batch´óĞ¡£¬±ÈÈçmnist Ò»´ÎÊäÈë64¸ö  
+      this->prob_=vector<vector<Dtype> >(batch_size,vector<Dtype>(label_num,Dtype(0)));  //ÖÃĞÅ¶ÈÊı×é 64*10  
     }  
       
     template <typename Dtype>  
     void MyLossLayer<Dtype>::Forward_cpu(  
         const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {  
 
-		const Dtype* label = bottom[1]->cpu_data();   //æ ‡ç­¾æ•°ç»„  64  
-		Dtype temp = 1;
-        //ä¸ºäº†é¿å…æ•°å€¼é—®é¢˜ï¼Œè®¡ç®—prob_æ—¶ï¼Œå…ˆå‡æœ€å¤§å€¼ï¼Œå†æŒ‰ç…§softmaxå…¬å¼è®¡ç®—å„ç½®ä¿¡åº¦  
+		const Dtype* label = bottom[1]->cpu_data();   //±êÇ©Êı×é  64  
+        //ÎªÁË±ÜÃâÊıÖµÎÊÌâ£¬¼ÆËãprob_Ê±£¬ÏÈ¼õ×î´óÖµ£¬ÔÙ°´ÕÕsoftmax¹«Ê½¼ÆËã¸÷ÖÃĞÅ¶È  
         for(int i=0;i<batch_size;++i){  
-            //æ±‚æœ€å¤§å€¼ï¼Œå¹¶å‡æœ€å¤§å€¼  
+            //Çó×î´óÖµ£¬²¢¼õ×î´óÖµ  
             Dtype mmax=-10000000;  
             for(int j=0;j<label_num;++j)  
                 mmax=max<Dtype>(mmax,bottom[0]->data_at(i,j,0,0));  
             for(int j=0;j<label_num;++j)  
                 prob_[i][j]=bottom[0]->data_at(i,j,0,0)-mmax;  
-            Dtype sum=0.0;   //æ±‚å‡ºåˆ†æ¯
+            Dtype sum=0.0;   //Çó³ö·ÖÄ¸
 			Dtype sumG = 0.0; 
             for(int j=0;j<label_num;++j){  
                 //sum+=exp(prob_[i][j]);
-                if (j<5){   // æ³¨æ„label
+                if (j<label_limit){   // ×¢Òâlabel
 					sum += exp(prob_[i][j]);
 				}
 				else{
@@ -48,44 +49,44 @@
 				}
 			}
             for(int j=0;j<label_num;++j){
-               if (j<5)
+               if (j<label_limit)
 					prob_[i][j]=(exp(prob_[i][j]))/(sum+sumG);
 				else
 				  prob_[i][j]=exp(prob_[i][j])/(sumG+(1-temp)*exp(prob_[i][j]));
 			}
 		}  
-        //æ ¹æ®è®¡ç®—å¥½çš„ç½®ä¿¡åº¦ï¼Œè®¡ç®—loss  
+        //¸ù¾İ¼ÆËãºÃµÄÖÃĞÅ¶È£¬¼ÆËãloss  
         Dtype loss=0.0;  
         for(int i=0;i<batch_size;++i){  
-            int realLabel=static_cast<int>(label[i]);  //å›¾ç‰‡içš„çœŸå®æ ‡ç­¾
-              Dtype tmpProb=prob_[i][realLabel];         //å±äºçœŸå®æ ‡ç­¾çš„ç½®ä¿¡åº¦  
-              loss -= log(max<Dtype>(tmpProb,Dtype(FLT_MIN)));   //é˜²æ­¢æ•°æ®æº¢å‡ºé—®é¢˜  
+            int realLabel=static_cast<int>(label[i]);  //Í¼Æ¬iµÄÕæÊµ±êÇ©
+              Dtype tmpProb=prob_[i][realLabel];         //ÊôÓÚÕæÊµ±êÇ©µÄÖÃĞÅ¶È  
+              loss -= log(max<Dtype>(tmpProb,Dtype(FLT_MIN)));   //·ÀÖ¹Êı¾İÒç³öÎÊÌâ  
               
 		}
         top[0]->mutable_cpu_data()[0] = loss / batch_size;  
     }  
       
-    //åå‘ä¼ æ’­ï¼Œè®¡ç®—æ¢¯åº¦  
+    //·´Ïò´«²¥£¬¼ÆËãÌİ¶È  
     template <typename Dtype>  
     void MyLossLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,  
         const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {  
       if (propagate_down[0]) {  
         Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();  
-        const Dtype* label = bottom[1]->cpu_data();   //æ ‡ç­¾   
+        const Dtype* label = bottom[1]->cpu_data();   //±êÇ©   
       
         for(int i=0;i<batch_size;++i){  
-            int realLabel=static_cast<int>(label[i]);  //å›¾ç‰‡içš„çœŸå®æ ‡ç­¾  
+            int realLabel=static_cast<int>(label[i]);  //Í¼Æ¬iµÄÕæÊµ±êÇ©  
             for(int j=0;j<label_num;++j){  
                 int offset=bottom[0]->offset(i,j);  
-                if(j==realLabel)                       //æŒ‰ç…§å…¬å¼ï¼Œå¦‚æœåˆ†é‡å°±æ˜¯çœŸå®æ ‡ç­¾ï¼Œç›´æ¥åœ¨ç½®ä¿¡åº¦ä¸Šå‡å»1ï¼Œå°±å¾—åˆ°è¯¥åˆ†é‡çš„æ¢¯åº¦  
+                if(j==realLabel)                       //°´ÕÕ¹«Ê½£¬Èç¹û·ÖÁ¿¾ÍÊÇÕæÊµ±êÇ©£¬Ö±½ÓÔÚÖÃĞÅ¶ÈÉÏ¼õÈ¥1£¬¾ÍµÃµ½¸Ã·ÖÁ¿µÄÌİ¶È  
                     bottom_diff[offset]=prob_[i][j]-1;  
-                else                                  //å¦åˆ™ï¼Œæ¢¯åº¦ç­‰äºç½®ä¿¡åº¦  
+                else                                  //·ñÔò£¬Ìİ¶ÈµÈÓÚÖÃĞÅ¶È  
                     bottom_diff[offset]=prob_[i][j];   
 			   
 
 			}  
         }  
-        for(int i=0;i<bottom[0]->count();++i)   //æ¢¯åº¦å½’ä¸€åŒ–ï¼Œé™¤ä»¥batchå¤§å°  
+        for(int i=0;i<bottom[0]->count();++i)   //Ìİ¶È¹éÒ»»¯£¬³ıÒÔbatch´óĞ¡  
             bottom_diff[i]/=batch_size;  
       }  
     }  
@@ -94,4 +95,4 @@
     INSTANTIATE_CLASS(MyLossLayer);  
     REGISTER_LAYER_CLASS(MyLoss);  
       
-    }  // namespace caffe  
+} // namespace caffe  

@@ -4,7 +4,8 @@
 
 
 * MyLoss:  add gallery to training data
-···
+
+```
 multicrop layer:  crop feature map for global and local learing
 MultiCropParameter multi_crop_param
 message MultiCropParameter {
@@ -27,9 +28,9 @@ layer {
     num_crop: 16
   }
 }
-···
+```
 ***
-···
+```
 center_cos_loss: center-loss using cos method
 
 cos_loss
@@ -74,5 +75,5 @@ message CosLossParameter {
   }
   loss_weight: 0.01
 }
-···
+```
 
